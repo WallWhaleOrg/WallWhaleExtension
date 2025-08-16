@@ -1,4 +1,5 @@
 import { HoverCardDemo } from "@/components/main/HoverDemo"
+import OptionsPage from "@/components/main/OptionsPage"
 import { ResizableDemo } from "@/components/main/ResizableDemo"
 import { TabsDemo } from "@/components/main/TabsDemo"
 import { TooltipDemo } from "@/components/main/TooltipDemo"
@@ -9,22 +10,18 @@ import { ThemeProvider } from "@/components/ui/theme-provider"
 
 export default function App() {
     return (
-        <div
-            className=" top-2 min-h-[400px] right-2 min-w-[400px] bg-background z-[9999451] rounded-lg flex justify-center items-center p-4">
-            {/* <ScrollArea className="w-full h-[350px] mx-auto items-center flex justify-center"> */}
+        <div className="min-h-[600px] min-w-[50em] max-w-[70em] bg-background rounded-lg flex justify-center items-center p-4">
             <div className='grid grid-cols-1 gap-4 items-center w-full'>
-                {/* <Button>
+                <ThemeProvider defaultTheme="dark">
+                    {/* <Button>
                         Click Me
                     </Button>
                     <TooltipDemo /> */}
-                {/* <HoverCardDemo /> */}
-                <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-                    <TabsDemo />
-
+                    {/* <HoverCardDemo /> */}
+                    <OptionsPage />
+                    {/* <ResizableDemo /> */}
                 </ThemeProvider>
-                {/* <ResizableDemo /> */}
             </div>
-            {/* </ScrollArea> */}
         </div>
     )
 };

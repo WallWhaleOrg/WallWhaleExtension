@@ -24,3 +24,7 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+
+#Ignore vscode AI rules
+.github\copilot-instructions.md
