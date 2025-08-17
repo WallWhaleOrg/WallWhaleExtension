@@ -1,7 +1,6 @@
 export default {
   plugins: {
-    tailwindcss: {},
+    '@tailwindcss/postcss': {},
     '@thedutchcoder/postcss-rem-to-px': {},
-    autoprefixer: {},
   },
 };
