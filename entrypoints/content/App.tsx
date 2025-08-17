@@ -1,9 +1,4 @@
-import { HoverCardDemo } from "@/components/main/HoverDemo"
-import { ResizableDemo } from "@/components/main/ResizableDemo"
-import { TabsDemo } from "@/components/main/TabsDemo"
-import { TooltipDemo } from "@/components/main/TooltipDemo"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { DownloadUi } from "@/components/main/DownloadUI"
 import { ThemeProvider } from "@/components/ui/theme-provider"
 
 
@@ -19,7 +14,7 @@ export default function App() {
                     <TooltipDemo /> */}
                 {/* <HoverCardDemo /> */}
                 <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-                    <TabsDemo />
+                    <DownloadUi />
 
                 </ThemeProvider>
                 {/* <ResizableDemo /> */}

@@ -138,7 +138,8 @@ export function OptionsPage() {
 
     return (
         <div className="w-full p-4">
-            <div className="grid grid-cols-1 gap-4">
+            <GradientBar
+                <div className="grid grid-cols-1 gap-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Extension Settings</CardTitle>
@@ -285,8 +286,8 @@ export function OptionsPage() {
                         </div>
                     </CardFooter>
                 </Card>
-            </div>
         </div>
+        </div >
     )
 }
 
