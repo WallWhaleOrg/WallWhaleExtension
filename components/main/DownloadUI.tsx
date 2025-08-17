@@ -202,7 +202,53 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
         if (lastLogRef.current === sanitized) return
 
         const logLevel = level || parseLogLevel(sanitized)
-        const entry = createLogEntry({ message: sanitized, level: logLevel, tag: "DL" })
+
+        // Determine a concise tag and category from message content
+        const determineTagAndCategory = (text: string) => {
+            const t = text.toLowerCase()
+            if (t.includes("steam") || t.includes("steam3") || /connecting to steam/i.test(text)) {
+                return { tag: "STEAM", category: "network" }
+            }
+            if (/logging\s+'.+'\s+into\s+steam/i.test(text) || t.includes("logging") || t.includes("login")) {
+                return { tag: "AUTH", category: "security" }
+            }
+            if (t.includes("license") || t.includes("licenses")) {
+                return { tag: "LICENSE", category: "system" }
+            }
+            if (t.includes("appinfo") || t.includes("got appinfo") || t.includes("manifest")) {
+                return { tag: "MANIFEST", category: "system" }
+            }
+            if (t.includes("depot") || /processing depot/i.test(text) || /downloading depot/i.test(text)) {
+                return { tag: "DEPOT", category: "system" }
+            }
+            if (t.includes("pre-allocating") || t.includes("pre-alloc") || t.includes("prealloc")) {
+                return { tag: "FS", category: "system" }
+            }
+            if (t.includes("archive created") || t.includes("archive downloaded") || t.includes("archive")) {
+                return { tag: "ARCHIVE", category: "system" }
+            }
+            if (t.includes("download completed") || t.includes("downloaded successfully")) {
+                return { tag: "COMPLETE", category: "system" }
+            }
+            if (t.includes("download started") || t.includes("download started (direct)") || t.includes("background download")) {
+                return { tag: "DOWNLOAD", category: "network" }
+            }
+            if (t.includes("removed") || t.includes("temporary") || t.includes("cleaned up") || t.includes("removed .depotdownloader")) {
+                return { tag: "CLEANUP", category: "system" }
+            }
+            if (/\d+\.\d+%/.test(text) || /%\s+\S+/.test(text)) {
+                return { tag: "PROGRESS", category: "performance" }
+            }
+
+            // Fallbacks
+            if (t.includes("error") || t.includes("failed")) return { tag: "ERROR", category: "validation" }
+            if (t.includes("warning") || t.includes("warn")) return { tag: "WARN", category: "validation" }
+            return { tag: "DL", category: "system" }
+        }
+
+        const { tag, category } = determineTagAndCategory(sanitized)
+
+        const entry = createLogEntry({ message: sanitized, level: logLevel, tag, category: category as LogEntry['category'] })
         setLogs(prev => [...prev, entry])
         lastLogRef.current = sanitized
     }
