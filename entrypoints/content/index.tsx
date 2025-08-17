@@ -1,7 +1,7 @@
 import App from "./App";
 import ReactDOM from "react-dom/client";
 import React from "react";
-import "./globals.css";
+import "@/assets/tailwind.css"; // Adjust the path if necessary
 
 export const PortalContext = React.createContext<HTMLElement | null>(null);
 

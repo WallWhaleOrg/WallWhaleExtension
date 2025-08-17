@@ -1,6 +1,25 @@
 import * as fs from "fs";
 import * as path from "path";
 
+/**
+ * DEPRECATION NOTICE
+ * -------------------
+ * This script's default (no-config) usage is deprecated and should not be used.
+ * Running the tool without explicit configuration (for example: relying on the
+ * hard-coded defaults `public/globals.css` -> `entrypoints`) may lead to
+ * unintended overwrites or inconsistent behavior across projects.
+ *
+ * Do not run this script without providing at minimum the `--source` and
+ * `--target` options. The script will now refuse to run when invoked with no
+ * command-line arguments. To run a copy operation, pass explicit flags, e.g.:
+ *
+ *   npx tsx copy-file.ts --source path/to/file --target path/to/dir
+ *
+ * If you need a replacement workflow (config file, safer CLI, or integrated
+ * tooling), consider migrating to a tool that supports explicit configuration
+ * and dry-run features.
+ */
+
 interface CopyOptions {
   sourceFile: string;
   targetDir: string;
@@ -239,6 +258,25 @@ function parseArgs(): {
     skipIdentical: true,
     overwrite: true,
   };
+
+  // Deprecation/runtime safeguard: refuse to run in no-config mode.
+  // If the user passed no CLI args (relying on defaults), print a clear
+  // deprecation message and exit with a non-zero code so CI/consumers notice.
+  if (args.length === 0) {
+    console.error(
+      `\n❗ DEPRECATED: running this script with no arguments is deprecated and unsafe.`
+    );
+    console.error(
+      `Provide explicit --source and --target options to run the copy.`
+    );
+    console.error(
+      `Example: npx tsx copy-file.ts --source public/globals.css --target entrypoints\n`
+    );
+    console.error(
+      `If you're updating automation, replace default runs with explicit flags or migrate to a safer config-based tool.`
+    );
+    process.exit(2);
+  }
 
   // Parse custom options
   for (let i = 0; i < args.length; i++) {

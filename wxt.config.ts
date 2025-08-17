@@ -1,11 +1,12 @@
 import { defineConfig } from "wxt";
+import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   vite: () => ({
     resolve: {
       alias: {
-        "@": "./*",
+        "@": path.resolve(__dirname, "./src"),
       },
     },
     plugins: [tailwindcss()],
