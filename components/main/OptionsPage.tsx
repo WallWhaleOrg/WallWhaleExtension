@@ -17,6 +17,7 @@ import type { ExtensionSettings } from "@/types/settings"
 import type { ApiKeyConfig } from "@/sdk/sdk"
 import { setupApi } from "@/entrypoints/background/utils/konfiger"
 import { getLocalStorageSettings, setLocalStorageSettings } from "@/entrypoints/background/utils/localstorage"
+import { GradientBars } from "../ui/gradient-bars"
 
 // safe global helper to avoid referencing `window` in non-window contexts
 const runtimeGlobal: any =
@@ -138,7 +139,6 @@ export function OptionsPage() {
 
     return (
         <div className="w-full p-4">
-
             <div className="grid grid-cols-1 gap-4">
                 <Card>
                     <CardHeader>

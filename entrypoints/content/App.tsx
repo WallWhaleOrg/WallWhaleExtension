@@ -1,4 +1,4 @@
-import { DownloadUi } from "@/components/main/DownloadUI"
+import { DownloadUI } from "@/components/main/DownloadUI"
 import { ThemeProvider } from "@/components/ui/theme-provider"
 
 
@@ -14,7 +14,7 @@ export default function App() {
                     <TooltipDemo /> */}
                 {/* <HoverCardDemo /> */}
                 <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-                    <DownloadUi />
+                    <DownloadUI />
 
                 </ThemeProvider>
                 {/* <ResizableDemo /> */}
