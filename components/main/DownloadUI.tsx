@@ -110,6 +110,8 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
     const clientRef = useRef<HTMLDivElement>(null)
     // Mutable SDK instance for runtime use
     const runtimeSdkRef = useRef<DownloadApiSdk | null>(null)
+    // Keep last added log to avoid repeating identical consecutive messages
+    const lastLogRef = useRef<string | null>(null)
 
     useEffect(() => {
         let mounted = true
@@ -156,9 +158,53 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
     }
 
     const addLog = (message: string, level?: "success" | "error" | "warning" | "info") => {
-        const logLevel = level || parseLogLevel(message)
-        const entry = createLogEntry({ message: message.trim(), level: logLevel, tag: "DL" })
+        // Sanitize and normalize the incoming log message
+        const sanitizeLog = (raw: string) => {
+            if (!raw) return ""
+            // Split into lines and remove noise lines (timestamps like 21:28:45 and lone 'DL' markers)
+            const lines = raw
+                .split(/\r?\n/)
+                .map(l => l.trim())
+                .filter(l => l.length > 0 && !/^\d{1,2}:\d{2}:\d{2}$/.test(l) && l !== "DL")
+
+            // Replace Windows absolute paths with only the basename to hide local structure
+            const hidePaths = (line: string) => {
+                // Replace sequences like C:\folder\sub\file.ext or /home/user/... with just the filename
+                // Windows paths
+                line = line.replace(/[A-Za-z]:\\(?:[^\\\s]+\\)*([^\\\s]+)(?=(\s|$))/g, (m, filename) => filename)
+                // Unix-like paths
+                line = line.replace(/(?:\/~|\/)?(?:[\w\-. ]+\/)+(\S+\.[A-Za-z0-9]{1,6})(?=(\s|$))/g, (m, filename) => filename)
+                // Generic long paths with backslashes or slashes
+                line = line.replace(/(?:\\|\/)\S*(?:\\|\/)?([^\\\/\s]+)$/g, (m, filename) => filename)
+                return line
+            }
+
+            const cleaned = lines.map(hidePaths)
+
+            // Remove duplicate adjacent lines inside the same message
+            const deduped: string[] = []
+            for (const l of cleaned) {
+                if (deduped.length === 0 || deduped[deduped.length - 1] !== l) deduped.push(l)
+            }
+
+            // Join with a compact separator and truncate long messages
+            const joined = deduped.join(' — ')
+            const truncated = joined.length > 300 ? joined.slice(0, 297) + '...' : joined
+
+            // Replace literal 'undefined' when it appears as a value (e.g., "Download started: undefined")
+            return truncated.replace(/:\s*undefined(?=$|\s)/i, ':')
+        }
+
+        const sanitized = sanitizeLog(message).trim()
+        if (!sanitized) return
+
+        // Avoid adding the same message twice in a row
+        if (lastLogRef.current === sanitized) return
+
+        const logLevel = level || parseLogLevel(sanitized)
+        const entry = createLogEntry({ message: sanitized, level: logLevel, tag: "DL" })
         setLogs(prev => [...prev, entry])
+        lastLogRef.current = sanitized
     }
 
     const updateProgress = (newProgress: number) => {
@@ -338,6 +384,8 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
             URL.revokeObjectURL(currentBlobUrl)
             setCurrentBlobUrl(null)
         }
+        // Clear dedupe state so future runs can log similar messages again
+        lastLogRef.current = null
     }
 
     const getStatusBadge = () => {
@@ -518,7 +566,7 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
                                 disabled={!downloadBlob}
                             >
                                 <DownloadIcon className="mr-2 h-4 w-4" />
-                                Download Again
+                                Download from Blob (cache)
                             </Button>
                             <Button
                                 onClick={resetDownload}
@@ -526,7 +574,7 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
                                 className="flex-1 bg-transparent"
                             >
                                 <RefreshCwIcon className="mr-2 h-4 w-4" />
-                                Start New Download
+                                Start New Download from server
                             </Button>
                         </>
                     ) : (
