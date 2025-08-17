@@ -16,7 +16,7 @@ export default defineConfig({
     name: "WallWhale",
     description: "Track and manage your job applications with ease",
     version: "1.2.2",
-    permissions: ["activeTab", "storage", "scripting", "cookies"],
+    permissions: ["activeTab", "storage", "scripting", "cookies", "downloads"],
     host_permissions: [
       "http://localhost:3000/*",
       "https://localhost:3000/*",
