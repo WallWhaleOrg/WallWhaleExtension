@@ -78,12 +78,8 @@ export function DownloadLogs({
     const lastLogRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        if (autoScroll && scrollContainerRef.current) {
-            // Scroll the container only to the bottom to avoid moving the whole page.
-            scrollContainerRef.current.scrollTo({
-                top: scrollContainerRef.current.scrollHeight,
-                behavior: "smooth",
-            })
+        if (autoScroll) {
+            scrollContainerToBottom(scrollContainerRef.current, "smooth")
         }
     }, [logs.length, autoScroll])
 
@@ -108,7 +104,7 @@ export function DownloadLogs({
                 <div
                     ref={scrollContainerRef}
                     className={cn(
-                        "space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent",
+                        "space-y-2 overflow-y-auto modern-scrollbar",
                         maxHeight,
                     )}
                 >
@@ -148,6 +144,48 @@ export function DownloadLogs({
             </CardContent>
         </Card>
     )
+}
+
+// Helper utilities
+/** Format a Date or ISO string into a localized time string */
+export function formatTimestamp(value: Date | string | number): string {
+    const d = typeof value === "string" || typeof value === "number" ? new Date(value) : value
+    if (!(d instanceof Date) || isNaN(d.getTime())) return String(value)
+    return d.toLocaleTimeString()
+}
+
+/** Create a LogEntry with sensible defaults */
+export function createLogEntry(input: Partial<LogEntry> & { id?: string }): LogEntry {
+    const now = new Date()
+    return {
+        id: input.id ?? `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: input.timestamp ?? now.toLocaleTimeString(),
+        level: input.level ?? "info",
+        message: input.message ?? "",
+        tag: input.tag ?? "GEN",
+        details: input.details,
+        category: input.category,
+    }
+}
+
+/** Group logs by category (returns an object where keys are categories or 'uncategorized') */
+export function groupLogsByCategory(logs: LogEntry[]) {
+    return logs.reduce<Record<string, LogEntry[]>>((acc, l) => {
+        const key = l.category ?? "uncategorized"
+            ; (acc[key] ||= []).push(l)
+        return acc
+    }, {})
+}
+
+/** Filter logs by level */
+export function filterLogsByLevel(logs: LogEntry[], level: LogEntry["level"]) {
+    return logs.filter((l) => l.level === level)
+}
+
+/** Safely scroll a container to bottom (no-op if container missing) */
+export function scrollContainerToBottom(container: HTMLDivElement | null | undefined, behavior: ScrollBehavior = "smooth") {
+    if (!container) return
+    container.scrollTo({ top: container.scrollHeight, behavior })
 }
 
 export const generateEnhancedTemplateLogs = (progress: number): LogEntry[] => {
