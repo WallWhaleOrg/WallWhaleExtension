@@ -18,7 +18,10 @@ import {
     InfoIcon,
     ShieldCheckIcon,
     DatabaseIcon,
-    XCircleIcon
+    XCircleIcon,
+    WifiIcon,
+    WifiOffIcon,
+    ActivityIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AnimatedBeam } from "../ui/shadcn-io/animated-beam"
@@ -26,6 +29,11 @@ import { Pill, PillStatus, PillDelta } from "../ui/shadcn-io/pill"
 import type { DownloadApiSdk } from "@/sdk/sdk"
 import { CreateJobRequest, createSdk } from "@/sdk/sdk" // Import SDK and types
 import { getWallWhaleSettings } from "@/entrypoints/background/utils/localstorage"
+// Import optimized components
+import { createOptimizedSdk } from "@/sdk/optimized-sdk"
+import { BatchDownloadManager } from "@/sdk/batch-manager"
+import { OfflineManager } from "@/sdk/offline-manager"
+import { globalTelemetry } from "@/sdk/telemetry"
 
 type DownloadStatus = "idle" | "creating-job" | "streaming" | "downloading" | "completed" | "error"
 
@@ -48,6 +56,16 @@ const buildJobreqoptions = (
     }
     return returner;
 };
+
+// Enhanced state for optimization features
+interface OptimizationState {
+    isOnline: boolean;
+    cacheEnabled: boolean;
+    circuitBreakerStatus: string;
+    connectionPoolStats: any;
+    offlineQueueLength: number;
+    telemetryEnabled: boolean;
+}
 
 const Circle = React.forwardRef<HTMLDivElement, { className?: string; children?: React.ReactNode }>(
     ({ className, children }, ref) => {
@@ -104,6 +122,20 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
     const [downloadSpeed, setDownloadSpeed] = useState(0)
     const [lastDownloadTime, setLastDownloadTime] = useState<Date | null>(null)
 
+    // Optimization state
+    const [optimizationState, setOptimizationState] = useState<OptimizationState>({
+        isOnline: navigator.onLine,
+        cacheEnabled: true,
+        circuitBreakerStatus: 'CLOSED',
+        connectionPoolStats: {},
+        offlineQueueLength: 0,
+        telemetryEnabled: true
+    })
+
+    // Optimization refs
+    const batchManagerRef = useRef<BatchDownloadManager | null>(null)
+    const offlineManagerRef = useRef<OfflineManager | null>(null)
+
     // Refs for animated beam
     const containerRef = useRef<HTMLDivElement>(null)
     const serverRef = useRef<HTMLDivElement>(null)
@@ -119,11 +151,57 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
                 try {
                     const cfg = await getWallWhaleSettings()
                     if (mounted && cfg) {
-                        runtimeSdkRef.current = createSdk(cfg)
-                        console.log("SDK initialized from local storage", cfg)
+                        // Create optimized SDK with all enhancements
+                        runtimeSdkRef.current = createOptimizedSdk(cfg, {
+                            enableCache: optimizationState.cacheEnabled,
+                            enableCircuitBreaker: true,
+                            enableConnectionPooling: true,
+                            cacheTtl: 30000,
+                            circuitBreakerOptions: {
+                                failureThreshold: 5,
+                                recoveryTimeout: 60000,
+                                useExponentialBackoff: true
+                            },
+                            connectionPoolOptions: {
+                                maxConnections: 3,
+                                timeout: 10000,
+                                retryAttempts: 3
+                            }
+                        })
+
+                        // Initialize optimization components
+                        if (runtimeSdkRef.current) {
+                            batchManagerRef.current = new BatchDownloadManager(runtimeSdkRef.current, {
+                                maxConcurrent: 2,
+                                retryFailed: true,
+                                onProgress: (completed, total, failed) => {
+                                    addLog(`Batch progress: ${completed}/${total} completed, ${failed} failed`, "info")
+                                },
+                                onJobComplete: (job, index) => {
+                                    addLog(`Job ${index} completed: ${job.id}`, "success")
+                                },
+                                onJobError: (error, request, index) => {
+                                    addLog(`Job ${index} failed: ${error.message}`, "error")
+                                }
+                            })
+
+                            offlineManagerRef.current = new OfflineManager(runtimeSdkRef.current, {
+                                maxQueueSize: 50,
+                                maxRetries: 3,
+                                autoSync: true
+                            })
+
+                            // Update optimization state
+                            setOptimizationState(prev => ({
+                                ...prev,
+                                offlineQueueLength: offlineManagerRef.current?.getStats().queueLength || 0
+                            }))
+                        }
+
+                        console.log("Optimized SDK initialized with all enhancements", cfg)
                     } else if (mounted) {
-                        // Fallback: create SDK with empty/default values to avoid runtime crashes
-                        console.warn("No WallWhale settings found in local storage; using empty SDK config")
+                        // Fallback: create basic SDK
+                        console.warn("No WallWhale settings found in local storage; using basic SDK config")
                         runtimeSdkRef.current = createSdk({ baseUrl: "", auth: { apiKey: "", useHeader: true } })
                     }
                 } catch (e) {
@@ -265,7 +343,7 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
             setError(null)
             setDownloadSpeed(Math.floor(Math.random() * 50) + 10) // Random speed simulation
 
-            addLog("Initializing download process...", "info")
+            addLog("Initializing optimized download process...", "info")
 
             // Get workshop details
             const { workshopitemname, workshopitemid, filename } = getWorkshopDetails()
@@ -276,6 +354,21 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
             const jobRequest = buildJobreqoptions("ruiiixx", currentUrl)
             addLog("Building job request...", "info")
             updateProgress(10)
+
+            // Check if offline and queue download
+            if (!optimizationState.isOnline && offlineManagerRef.current) {
+                const downloadId = await offlineManagerRef.current.queueDownload(jobRequest, 1, {
+                    source: 'workshop_page',
+                    userAgent: navigator.userAgent,
+                    referrer: document.referrer
+                })
+                addLog(`Download queued for offline processing (ID: ${downloadId})`, "info")
+                setStatus("completed")
+                return
+            }
+
+            // Track download start with telemetry
+            globalTelemetry.trackDownloadStart(`job_${Date.now()}`, jobRequest)
 
             // Create job
             addLog("Creating job on server...", "info")
@@ -517,6 +610,33 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
                         </Pill>
                     )}
 
+                    {/* Optimization Status Pills */}
+                    <Pill>
+                        <PillStatus>
+                            {optimizationState.isOnline ? (
+                                <WifiIcon className="text-green-500" size={12} />
+                            ) : (
+                                <WifiOffIcon className="text-red-500" size={12} />
+                            )}
+                            {optimizationState.isOnline ? "Online" : "Offline"}
+                        </PillStatus>
+                        Network
+                    </Pill>
+
+                    {optimizationState.cacheEnabled && (
+                        <Pill className="text-muted-foreground">
+                            <DatabaseIcon size={12} />
+                            Cache: ON
+                        </Pill>
+                    )}
+
+                    {optimizationState.offlineQueueLength > 0 && (
+                        <Pill className="text-amber-600">
+                            <ActivityIcon size={12} />
+                            Queue: {optimizationState.offlineQueueLength}
+                        </Pill>
+                    )}
+
                     {isProcessing && (
                         <>
                             <Pill>
@@ -595,14 +715,37 @@ export function DownloadUI({ extensionName = "My Extension", className }: { exte
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
                     {status === "idle" || status === "error" ? (
-                        <Button
-                            onClick={startRealDownload}
-                            className="flex-1"
-                            disabled={isProcessing}
-                        >
-                            <ServerIcon className="mr-2 h-4 w-4" />
-                            Start Download
-                        </Button>
+                        <>
+                            <Button
+                                onClick={startRealDownload}
+                                className="flex-1"
+                                disabled={isProcessing}
+                            >
+                                <ServerIcon className="mr-2 h-4 w-4" />
+                                Start Download
+                            </Button>
+                            {optimizationState.offlineQueueLength > 0 && (
+                                <Button
+                                    onClick={async () => {
+                                        if (offlineManagerRef.current) {
+                                            addLog("Syncing offline queue...", "info")
+                                            await offlineManagerRef.current.forceSync()
+                                            addLog("Offline queue synced successfully", "success")
+                                            setOptimizationState(prev => ({
+                                                ...prev,
+                                                offlineQueueLength: offlineManagerRef.current?.getStats().queueLength || 0
+                                            }))
+                                        }
+                                    }}
+                                    variant="outline"
+                                    className="flex-1"
+                                    disabled={!optimizationState.isOnline}
+                                >
+                                    <ActivityIcon className="mr-2 h-4 w-4" />
+                                    Sync Offline Queue ({optimizationState.offlineQueueLength})
+                                </Button>
+                            )}
+                        </>
                     ) : status === "completed" ? (
                         <>
                             <Button

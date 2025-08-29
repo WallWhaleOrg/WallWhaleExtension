@@ -127,8 +127,8 @@ export interface SdkConfig {
  * The main SDK class for the WallWhale Download API.
  */
 export class DownloadApiSdk {
-  private baseUrl: string;
-  private auth: ApiKeyConfig;
+  protected baseUrl: string;
+  protected auth: ApiKeyConfig;
 
   /**
    * Creates an instance of the DownloadApiSdk.
@@ -141,10 +141,10 @@ export class DownloadApiSdk {
 
   /**
    * Constructs the appropriate authentication headers for API requests.
-   * @private
+   * @protected
    * @returns {HeadersInit} The headers object.
    */
-  private getHeaders(): HeadersInit {
+  protected getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };
